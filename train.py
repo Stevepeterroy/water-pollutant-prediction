@@ -6,6 +6,7 @@ import joblib
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.dummy import DummyRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
@@ -37,9 +38,12 @@ def train(csv_path, output_path):
     ])
     model.fit(training[["year", "id"]], training[POLLUTANTS])
     prediction = model.predict(testing[["year", "id"]])
+    baseline = DummyRegressor(strategy="mean").fit(training[["year", "id"]], training[POLLUTANTS])
+    baseline_prediction = baseline.predict(testing[["year", "id"]])
     metrics = {"temporal_test_start": int(cutoff), "training_rows": len(training), "test_rows": len(testing),
                "pollutants": {name: {"mse": mean_squared_error(testing[name], prediction[:, i]),
-                                      "r2": r2_score(testing[name], prediction[:, i])}
+                                      "r2": r2_score(testing[name], prediction[:, i]),
+                                      "mean_baseline_mse": mean_squared_error(testing[name], baseline_prediction[:, i])}
                               for i, name in enumerate(POLLUTANTS)}}
     artifact = {"model": model, "pollutants": POLLUTANTS, "stations": sorted(training.id.unique()),
                 "training_years": [int(training.year.min()), int(training.year.max())]}
